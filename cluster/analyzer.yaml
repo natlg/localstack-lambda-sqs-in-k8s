@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analyzer
+  labels:
+    app: analyzer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analyzer
+  template:
+    metadata:
+      labels:
+        app: analyzer
+    spec:
+      initContainers:
+      - name: local-worker-wait
+        image: busybox:1.28
+        command: ['sh', '-c', 'until nslookup worker; do echo waiting for worker; sleep 2; done;']
+      - name: create-worker-resources
+        command: ['sh', '-c', 'scripts/provision-localstack.sh']
+        image: natlg/provision-localstack:latest
+        imagePullPolicy: Never
+        env:
+          - name: LOCALSTACK_HOST
+            value: worker
+      containers:
+        - name: analyzer
+          image: natlg/analyzer:latest
+          imagePullPolicy: Never
+          env:
+            - name: PORT
+              value: "8081"
+          ports:
+            - name: http
+              containerPort: 8081
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analyzer
+  labels:
+    app: analyzer
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      targetPort: http
+      protocol: TCP
+      port: 8081
+      nodePort: 30081
+  selector:
+    app: analyzer

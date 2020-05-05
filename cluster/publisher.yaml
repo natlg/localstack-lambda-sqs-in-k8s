@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: publisher
+  labels:
+    app: publisher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: publisher
+  template:
+    metadata:
+      labels:
+        app: publisher
+    spec:
+      containers:
+        - name: publisher
+          image: natlg/publisher:latest
+          imagePullPolicy: Never
+          env:
+            - name: PORT
+              value: "8085"
+          ports:
+            - name: http
+              containerPort: 8085
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: publisher
+  labels:
+    app: publisher
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      targetPort: http
+      protocol: TCP
+      port: 8085
+      nodePort: 30085
+  selector:
+    app: publisher

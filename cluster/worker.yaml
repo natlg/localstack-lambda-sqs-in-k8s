@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  labels:
+    app: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: natlg/worker:latest
+          imagePullPolicy: Never
+          securityContext:
+            privileged: true
+          env:
+            - name: LAMBDA_EXECUTOR
+              value: docker-reuse
+            - name: LOCALSTACK_HOSTNAME
+              value: localhost
+            - name: LAMBDA_REMOVE_CONTAINERS
+              value: "false"
+            - name: DOCKER_HOST
+              value: unix:///var/run/docker.sock
+            - name: LAMBDA_DOCKER_NETWORK
+              value: host
+            - name: DATA_DIR
+              value: "/tmp/localstack/data"
+          ports:
+            - name: http
+              containerPort: 4566
+              protocol: TCP
+            - name: sqs
+              containerPort: 4576
+            - name: lambda
+              containerPort: 4574
+          volumeMounts:
+            - name: docker-sock
+              mountPath: "/var/run/"
+      volumes:
+       - name: docker-sock
+         hostPath:
+           path: /var/run/
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker
+  labels:
+    app: worker
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      targetPort: http
+      protocol: TCP
+      port: 4566
+    - name: sqs
+      targetPort: sqs
+      protocol: TCP
+      port: 4576
+    - name: lambda
+      targetPort: lambda
+      protocol: TCP
+      port: 4574
+  selector:
+    app: worker

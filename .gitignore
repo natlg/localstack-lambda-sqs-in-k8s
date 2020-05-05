@@ -1,0 +1,8 @@
+/.cache
+/.work
+/.vscode
+/output
+/config/
+cover.out
+/vendor
+node_modules
