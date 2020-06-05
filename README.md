@@ -29,14 +29,15 @@ It contains script for creating SQS, Lambda and event source mapping.
 #### Call services:
 - Check currently running pods and wait until analyzer is up:
 ```
-kubectl get all -n test-localstack
+watch kubectl get all -n test-localstack
 ```
 
 - Open http://localhost/publish/msg in browser.<br>
 This request calls `publisher` service that will send message to sqs. 
 Sqs invokes Lambda and Lambda function calls `analyzer` service
 
-- Get statistics, returns how name time analyzer was called: http://localhost/publish/stats
+- Get statistics, returns how many time analyzer was called: http://localhost/publish/stats
+It can take few seconds to finish work and show updated statistics. Each Lambda call should increment this value.
 
 Call analyzer manually:
 http://localhost/analyze/msg
@@ -51,7 +52,7 @@ http://localhost/analyze/stats
  
  #### Clean up:
  
- `./setup.sh` - remove deployments 
+ `./setup.sh delete` - remove deployments 
  
  `./setup.sh clean` - delete kind cluster
 
