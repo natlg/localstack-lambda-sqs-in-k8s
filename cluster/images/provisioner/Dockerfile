@@ -5,5 +5,5 @@ RUN apt-get install -y python-pip
 RUN pip install awscli-local
 RUN apt-get install -y curl
 
-ADD scripts/ scripts/
+ADD scripts scripts/
 ADD worker.zip worker.zip

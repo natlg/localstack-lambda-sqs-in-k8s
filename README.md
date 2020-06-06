@@ -6,6 +6,12 @@ Uses [LocalStack](https://github.com/localstack/localstack) for emulating AWS cl
  and [aws-sdk-go](github.com/aws/aws-sdk-go) for calling AWS from service in Go.
 
 #### Build:
+Sync submodule after cloning repository:
+```
+git submodule update --init -r
+
+```
+Build:
 ```
 make
 ```
@@ -44,11 +50,6 @@ http://localhost/analyze/msg
 
 Get statistics directly from analyzer:
 http://localhost/analyze/stats
-
- Will work on Ubuntu, but not likely on Mac because of network configuration. Docker container with Lambda 
- is running in `host` network that is not available on Mac. <br>
- Kind v0.8 uses separate network `kind` but setting it as a network for Lambda still doesn't work because it's 
- running as Docker outside of Docker.
  
  #### Clean up:
  

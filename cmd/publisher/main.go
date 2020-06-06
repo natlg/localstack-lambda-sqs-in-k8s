@@ -28,6 +28,11 @@ func main() {
 			Region:      aws.String(endpoints.UsWest2RegionID),
 			Endpoint:    aws.String(workerEndpoint)},
 		)
+		if err != nil {
+			log.Printf("NewSession Error %v ", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		svc := sqs.New(sess)
 
 		qURL := fmt.Sprintf("%s/queue/worker_sqs", workerEndpoint)
@@ -40,7 +45,7 @@ func main() {
 
 		if err != nil {
 			log.Printf("SendMessage Error %v ", err)
-			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		log.Printf("MessageId %v", *mresult.MessageId)
@@ -56,11 +61,13 @@ func main() {
 		req := client.R()
 		res, err := req.Get("/analyze/stats")
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"StatsStatusCode": res.StatusCode(), "statRes": res.String()})
 	})
 
-	r.Run(":8085")
+	if err := r.Run(":8085"); err != nil {
+		return
+	}
 }

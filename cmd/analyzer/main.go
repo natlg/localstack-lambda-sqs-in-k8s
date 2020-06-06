@@ -21,5 +21,7 @@ func main() {
 		log.Printf("stats, msgReceived %v", msgReceived)
 		c.JSON(http.StatusOK, gin.H{"analyzerStats": msgReceived})
 	})
-	r.Run(":8081")
+	if err := r.Run(":8081"); err != nil {
+		return
+	}
 }

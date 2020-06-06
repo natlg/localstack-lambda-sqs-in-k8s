@@ -3,6 +3,24 @@
 set -x
 set -e
 
+scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+eval $(make --no-print-directory -C ${scriptdir} build.vars)
+
+echo ${BUILD_REGISTRY}
+echo ${DOCKER_REGISTRY}
+
+WORKER_IMAGE="${BUILD_REGISTRY}/worker-amd64:latest"
+KIND_WORKER_IMAGE="natlg/worker:latest"
+
+PUBLISHER_IMAGE="${BUILD_REGISTRY}/publisher-amd64:latest"
+KIND_PUBLISHER_IMAGE="natlg/publisher:latest"
+
+ANALYZER_IMAGE="${BUILD_REGISTRY}/analyzer-amd64:latest"
+KIND_ANALYZER_IMAGE="natlg/analyzer:latest"
+
+PROVISION_IMAGE="${BUILD_REGISTRY}/provision-localstack-amd64:latest"
+KIND_PROVISION_IMAGE="natlg/provision-localstack:latest"
+
 function configureKind() {
 kind create cluster --name test-localstack --config=cluster/kind.yaml
 
@@ -15,10 +33,21 @@ kubectl patch deployments -n ingress-nginx nginx-ingress-controller -p '{"spec":
 }
 
 function loadAllImages() {
-kind load docker-image natlg/worker:latest --name test-localstack -v 1
-kind load docker-image natlg/publisher:latest --name test-localstack -v 1
-kind load docker-image natlg/analyzer:latest --name test-localstack -v 1
-kind load docker-image natlg/provision-localstack:latest --name test-localstack -v 1
+  loadImage ${WORKER_IMAGE} ${KIND_WORKER_IMAGE}
+  loadImage ${PUBLISHER_IMAGE} ${KIND_PUBLISHER_IMAGE}
+  loadImage ${ANALYZER_IMAGE} ${KIND_ANALYZER_IMAGE}
+  loadImage ${PROVISION_IMAGE} ${KIND_PROVISION_IMAGE}
+}
+
+function loadImage() {
+  local build_image=$1
+  local final_image=$2
+  docker tag "${build_image}" "${final_image}"
+  echo "Tagged image: ${build_image} - ${final_image}"
+  if $ENABLE_KIND; then
+    echo "loading $final_image in Kind"
+    kind load docker-image $final_image --name test-localstack
+  fi
 }
 
 function installAll() {
