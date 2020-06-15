@@ -4,11 +4,26 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
-	"log"
-
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/go-resty/resty/v2"
 	"github.com/sirupsen/logrus"
+	"log"
+	"strings"
 )
+
+const (
+	localstackQueueSvsEndpoint = "http://localhost/queue"
+	localstackS3SvsEndpoint    = "http://localhost"
+	qName                      = "result_sqs"
+)
+
+var qURL = fmt.Sprintf("http://localhost/queue/%s", qName)
 
 type Message struct {
 	Name string `json:"name"`
@@ -20,27 +35,63 @@ type Result struct {
 }
 
 func HandleRequest(ctx context.Context, msg Message) (Result, error) {
-	// test possible urls for a service
-	// depending on network that lambda is running on different urls could work
-	details := "attempt 1:  \n"
+	details := "===== details "
+	// send message to result_sqs queue that analyzer polls from
+	sess, err := session.NewSession(&aws.Config{
+		Credentials:      credentials.NewStaticCredentials("some", "secret", ""),
+		Region:           aws.String(endpoints.UsEast1RegionID),
+		Endpoint:         aws.String(localstackQueueSvsEndpoint),
+		S3ForcePathStyle: aws.Bool(true)},
+	)
+	if err != nil {
+		log.Printf("NewSession Error %v ", err)
+	}
+	svc := sqs.New(sess)
 
-	client := NewRestyClient("http://analyzer.test-localstack.svc.cluster.local:8081", true)
-	details += GetRequestLog(client)
+	_, err = svc.SendMessage(&sqs.SendMessageInput{
+		DelaySeconds:      aws.Int64(10),
+		MessageAttributes: map[string]*sqs.MessageAttributeValue{},
+		MessageBody:       aws.String("Some Information"),
+		QueueUrl:          &qURL,
+	})
 
-	details += "attempt 2:  \n"
-	client.SetHostURL("http://analyzer:8081")
-	details += GetRequestLog(client)
+	if err != nil {
+		details += " failed to send msg "
+		log.Printf("SendMessage Error %v ", err)
+	}
 
-	details += "attempt 3:  \n"
-	client.SetHostURL("http://localhost:8081")
-	details += GetRequestLog(client)
+	// set different endpoint for s3, need to change only for localstack
+	sess.Config.Endpoint = aws.String(localstackS3SvsEndpoint)
+	// put file to s3 bucket. it should trigger sending message to another queue s3_sqs that analyzer polls from
+	svcS3 := s3.New(sess)
+	r, err := svcS3.ListBuckets(nil)
+	if err != nil {
+		details += " list b err"
+	}
 
-	details += "attempt 4:  \n"
-	client.SetHostURL("http://localhost")
-	details += GetRequestLog(client)
+	details += " Buckets: "
 
-	log.Printf("lambda result: %v", details)
-	result := Result{Details: details, Name: msg.Name}
+	for _, b := range r.Buckets {
+		details += aws.StringValue(b.Name)
+	}
+
+	uploader := s3manager.NewUploader(sess)
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String("test"),
+		Key:    aws.String("testresultfile"),
+		Body:   strings.NewReader("success!!"),
+	})
+	if err != nil {
+		details += " upload error"
+	} else {
+		details += " uploaded!"
+	}
+
+	client := NewRestyClient("http://localhost", true)
+	analizarRquestResult := GetRequestLog(client, details)
+
+	log.Printf("analizarRquestResult: %v", analizarRquestResult)
+	result := Result{Details: details, Name: details}
 	return result, nil
 }
 
@@ -52,9 +103,10 @@ func NewRestyClient(s string, b bool) *resty.Client {
 	return client
 }
 
-func GetRequestLog(c *resty.Client) string {
+func GetRequestLog(c *resty.Client, msg string) string {
 	req := c.R()
-	res, err := req.Get("/analyze/msg")
+	url := fmt.Sprintf("/analyze/msg/%s", msg)
+	res, err := req.Get(url)
 	return fmt.Sprintf("\n err: %v, result: %v \n", err, res)
 }
 

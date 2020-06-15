@@ -23,8 +23,6 @@ spec:
           env:
             - name: LAMBDA_EXECUTOR
               value: docker-reuse
-            - name: LOCALSTACK_HOSTNAME
-              value: localhost
             - name: LAMBDA_REMOVE_CONTAINERS
               value: "false"
             - name: DOCKER_HOST
@@ -33,21 +31,29 @@ spec:
               value: host
             - name: DATA_DIR
               value: "/tmp/localstack/data"
+            - name: DEFAULT_REGION
+              value: us-east-1
           ports:
-            - name: http
+            - name: localstack
               containerPort: 4566
               protocol: TCP
             - name: sqs
               containerPort: 4576
             - name: lambda
               containerPort: 4574
+            - name: s3
+              containerPort: 4572
           volumeMounts:
             - name: docker-sock
               mountPath: "/var/run/"
+            - name: datadir
+              mountPath: /tmp/localstack
       volumes:
-       - name: docker-sock
-         hostPath:
-           path: /var/run/
+        - name: docker-sock
+          hostPath:
+            path: /var/run/
+        - name: datadir
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -58,8 +64,8 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - name: http
-      targetPort: http
+    - name: localstack
+      targetPort: localstack
       protocol: TCP
       port: 4566
     - name: sqs
@@ -70,5 +76,9 @@ spec:
       targetPort: lambda
       protocol: TCP
       port: 4574
+    - name: s3
+      targetPort: s3
+      protocol: TCP
+      port: 4572
   selector:
     app: worker

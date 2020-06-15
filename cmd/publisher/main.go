@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 	"github.com/sirupsen/logrus"
@@ -23,9 +22,10 @@ const (
 func main() {
 	r := gin.Default()
 	r.GET("/publish/msg", func(c *gin.Context) {
+		// send message to worker_sqs queue that will trigger lambda
 		sess, err := session.NewSession(&aws.Config{
 			Credentials: credentials.NewStaticCredentials("some", "secret", ""),
-			Region:      aws.String(endpoints.UsWest2RegionID),
+			Region:      aws.String(endpoints.UsEast1RegionID),
 			Endpoint:    aws.String(workerEndpoint)},
 		)
 		if err != nil {

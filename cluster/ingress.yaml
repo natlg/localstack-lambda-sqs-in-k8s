@@ -21,3 +21,11 @@ spec:
           backend:
             serviceName: analyzer
             servicePort: 8081
+        - path: /queue/*
+          backend:
+            serviceName: worker
+            servicePort: 4576
+        - path: /test/*
+          backend:
+            serviceName: worker
+            servicePort: 4572
