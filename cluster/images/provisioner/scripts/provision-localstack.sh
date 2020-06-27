@@ -7,7 +7,9 @@ until awslocal sqs list-queues; do
    sleep 10
 done
 
-awslocal sqs create-queue --queue-name worker_sqs
+# seems sqs dead letter queue not implemented yet - keep an eye on https://github.com/localstack/localstack/issues/2107
+awslocal sqs create-queue --queue-name worker-dead-queue
+awslocal sqs create-queue --queue-name worker_sqs  --attributes '{"RedrivePolicy": "{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-1:000000000000:worker-dead-queue\",\"maxReceiveCount\":5}"}'
 awslocal sqs create-queue --queue-name result_sqs
 awslocal sqs create-queue --queue-name s3_sqs
 
@@ -29,7 +31,7 @@ awslocal s3api put-bucket-notification \
 --notification-configuration '{
   "QueueConfiguration":
     {
-      "Id": "s3-upload-notification-to-sns",
+      "Id": "s3-upload-notify-sqs",
       "Queue": "arn:aws:sqs:us-east-1:000000000000:s3_sqs",
       "Event": "s3:ObjectCreated:*"
     }
@@ -42,7 +44,7 @@ awslocal s3api put-bucket-notification \
 #--notification-configuration '{
 #  "QueueConfigurations": [
 #    {
-#      "Id": "s3-upload-notification-to-sns",
+#      "Id": "s3-upload-notify-sqs",
 #      "QueueArn": "arn:aws:sqs:us-east-1:000000000000:s3_sqs",
 #      "Events": [
 #        "s3:ObjectCreated:*"

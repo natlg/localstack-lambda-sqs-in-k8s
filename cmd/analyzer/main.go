@@ -22,9 +22,11 @@ const (
 var details string
 var qResultURL = fmt.Sprintf("%s/queue/result_sqs", workerEndpoint)
 var qS3URL = fmt.Sprintf("%s/queue/s3_sqs", workerEndpoint)
+var dlqURL = fmt.Sprintf("%s/queue/worker-dead-queue", workerEndpoint)
 var directMsgReceived int
 var sqsMsgReceived int
 var s3MsgReceived int
+var dlqMsgReceived int
 
 func main() {
 	sess, err := session.NewSession(&aws.Config{
@@ -58,7 +60,7 @@ func main() {
 			log.Printf("listBucketsAndFiles err %v", err)
 		}
 
-		c.JSON(http.StatusOK, gin.H{"directMsgReceived": directMsgReceived, "sqsMsgReceived": sqsMsgReceived, "s3MsgReceived": s3MsgReceived, "details": details, "files": filesDetails})
+		c.JSON(http.StatusOK, gin.H{"directMsgReceived": directMsgReceived, "sqsMsgReceived": sqsMsgReceived, "s3MsgReceived": s3MsgReceived, "dlqMsgReceived:": dlqMsgReceived, "details": details, "files": filesDetails})
 	})
 	if err := r.Run(":8081"); err != nil {
 		return
@@ -126,11 +128,14 @@ func (mp *QueuePoller) pollQueue(qURL string) {
 
 func (mp *QueuePoller) processMessage(message *sqs.Message, qURL string) {
 	log.Printf("=== processMessage q %v, msg %v ", qURL, *message.Body)
-	if qURL == qResultURL {
+	switch qURL {
+	case qResultURL:
 		sqsMsgReceived++
-	} else if qURL == qS3URL {
+	case qS3URL:
 		s3MsgReceived++
-	} else {
+	case dlqURL:
+		dlqMsgReceived++
+	default:
 		log.Printf("unknown q")
 	}
 	log.Printf("msg err %v", *message.Body)

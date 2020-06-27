@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -25,17 +26,17 @@ const (
 
 var qURL = fmt.Sprintf("http://localhost/queue/%s", qName)
 
-type Message struct {
-	Name string `json:"name"`
-}
-
 type Result struct {
 	Name    string `json:"name"`
 	Details string `json:"details"`
 }
 
-func HandleRequest(ctx context.Context, msg Message) (Result, error) {
+func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) (Result, error) {
 	details := "===== details "
+	for _, message := range sqsEvent.Records {
+		log.Printf("The message %v for event source %v = %v \n", message.MessageId, message.EventSource, message.Body)
+		details += fmt.Sprintf(" msg %v", message.Body)
+	}
 	// send message to result_sqs queue that analyzer polls from
 	sess, err := session.NewSession(&aws.Config{
 		Credentials:      credentials.NewStaticCredentials("some", "secret", ""),

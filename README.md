@@ -1,9 +1,10 @@
 ### localstack-lambda-sqs-in-k8s
-Example of working with SQS, S3 bucket and AWS Lambda in Go running in [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/) k8s cluster. 
+Example application to play around with SQS, S3 bucket and AWS Lambda in Go.
+ Deployed in [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/) k8s cluster. 
 
 Uses [LocalStack](https://github.com/localstack/localstack) for emulating AWS cloud stack, 
 [awslocal](https://github.com/localstack/awscli-local) as a wrapper for aws cli
- and [aws-sdk-go](github.com/aws/aws-sdk-go) for calling AWS from service in Go.
+ and [aws-sdk-go](github.com/aws/aws-sdk-go) for calling AWS from services in Go.
 
 #### Build:
 Sync submodule after cloning repository:
@@ -31,7 +32,7 @@ It will run 2 services: `publisher` and `analyzer` and expose them locally (by I
 that invokes AWS Lambda (using event source mapping). Lambda function notifies `analyzer` service by adding file to S3 bucket, 
 sending SQS message and direct call.
 Analyzer keeps tracks of how many times it was invoked and by what localstack service, so that it can be checked later. <br>
-Localstack is provisioned in init container for `analyzer` pod. It contains script for creating SQS, 
+Localstack is provisioned in init container for `analyzer` pod. It contains script for creating SQS, S3,
 Lambda and event source mapping.
 
 #### Call services:
@@ -54,7 +55,7 @@ It can take few seconds to finish work and show updated statistics. Each Lambda 
 Analyzer keeps track separately for direct calls and received messages from `result_sqs` and 
 `s3_sqs` queues.
 
-Call analyzer manually (will update direct call static):
+Call analyzer manually (will update direct call statistic):
 http://localhost/analyze/msg
 
 Get statistics directly from analyzer:
